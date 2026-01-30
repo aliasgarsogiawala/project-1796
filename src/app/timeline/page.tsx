@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { loadState, getDaysRemaining } from '@/lib/storage';
+import { useEffect, useState, useMemo } from 'react';
+import { loadState, getDaysRemaining, getTimeProgress } from '@/lib/storage';
 import { AppState, MOOD_OPTIONS } from '@/types';
-import Link from 'next/link';
 import ContributionGraph from '@/components/ContributionGraph';
+import Link from 'next/link';
 
 export default function TimelinePage() {
   const [state, setState] = useState<AppState | null>(null);
@@ -15,247 +15,287 @@ export default function TimelinePage() {
     setState(loadState());
   }, []);
 
-  if (!mounted || !state) {
+  const stats = useMemo(() => {
+    if (!state) return null;
+
+    const daysRemaining = getDaysRemaining();
+    const timeProgress = getTimeProgress();
+    
+    // Monthly activity
+    const monthlyActivity: { [key: string]: number } = {};
+    const moodDistribution: { [key: string]: number } = {
+      great: 0, good: 0, okay: 0, bad: 0, terrible: 0
+    };
+    
+    state.entries.forEach(entry => {
+      const monthKey = new Date(entry.date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      monthlyActivity[monthKey] = (monthlyActivity[monthKey] || 0) + 1;
+      moodDistribution[entry.mood] = (moodDistribution[entry.mood] || 0) + 1;
+    });
+
+    // Get last 6 months
+    const months: { label: string; count: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      const key = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      months.push({ label: key, count: monthlyActivity[key] || 0 });
+    }
+
+    const maxMonthlyCount = Math.max(...months.map(m => m.count), 1);
+
+    // Unique days with entries
+    const uniqueDays = new Set(state.entries.map(e => e.date.split('T')[0])).size;
+    
+    // Streak calculation
+    let currentStreak = 0;
+    let longestStreak = 0;
+    let tempStreak = 0;
+    const sortedDates = [...new Set(state.entries.map(e => e.date.split('T')[0]))].sort().reverse();
+    
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    
+    if (sortedDates.includes(today) || sortedDates.includes(yesterday)) {
+      for (let i = 0; i < sortedDates.length; i++) {
+        const currentDate = new Date(sortedDates[i]);
+        const previousDate = i > 0 ? new Date(sortedDates[i - 1]) : null;
+        
+        if (i === 0 || (previousDate && (previousDate.getTime() - currentDate.getTime()) === 86400000)) {
+          tempStreak++;
+        } else {
+          longestStreak = Math.max(longestStreak, tempStreak);
+          tempStreak = 1;
+        }
+      }
+      longestStreak = Math.max(longestStreak, tempStreak);
+      currentStreak = sortedDates.includes(today) || sortedDates.includes(yesterday) ? tempStreak : 0;
+    }
+
+    // Weekly average
+    const weeklyAvg = uniqueDays > 0 
+      ? Math.round((state.entries.length / Math.ceil(uniqueDays / 7)) * 10) / 10
+      : 0;
+
+    return {
+      daysRemaining,
+      timeProgress,
+      totalEntries: state.entries.length,
+      uniqueDays,
+      currentStreak,
+      longestStreak,
+      weeklyAvg,
+      months,
+      maxMonthlyCount,
+      moodDistribution,
+      totalGoals: state.goals.length,
+      completedGoals: state.goals.filter(g => g.progress === 100).length,
+    };
+  }, [state]);
+
+  if (!mounted || !state || !stats) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center justify-center h-screen">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
+        </div>
       </div>
     );
   }
 
-  // Calculate stats
-  const daysWithEntries = new Set(state.entries.map(e => e.date.split('T')[0])).size;
-  const totalDays = 1796;
-  const daysRemaining = getDaysRemaining();
-  const daysElapsed = totalDays - daysRemaining;
-  const consistency = daysElapsed > 0 ? Math.round((daysWithEntries / Math.min(daysElapsed, 365)) * 100) : 0;
+  const moodColors: { [key: string]: string } = {
+    great: '#10b981',
+    good: '#34d399', 
+    okay: '#fbbf24',
+    bad: '#f97316',
+    terrible: '#ef4444'
+  };
 
-  // Get mood distribution
-  const moodCounts = state.entries.reduce((acc, entry) => {
-    acc[entry.mood] = (acc[entry.mood] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const totalMoods = state.entries.length;
-
-  // Get entries by month for the chart
-  const entriesByMonth: { month: string; count: number }[] = [];
-  const last12Months = Array.from({ length: 12 }, (_, i) => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - (11 - i));
-    return {
-      key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
-      label: date.toLocaleDateString('en-US', { month: 'short' })
-    };
-  });
-
-  last12Months.forEach(({ key, label }) => {
-    const count = state.entries.filter(e => e.date.startsWith(key)).length;
-    entriesByMonth.push({ month: label, count });
-  });
-
-  const maxMonthlyEntries = Math.max(...entriesByMonth.map(m => m.count), 1);
-
-  // Milestones
-  const milestones = [
-    { day: 0, label: 'Day 1', reached: daysElapsed >= 0 },
-    { day: 100, label: '100 Days', reached: daysElapsed >= 100 },
-    { day: 365, label: '1 Year', reached: daysElapsed >= 365 },
-    { day: 730, label: '2 Years', reached: daysElapsed >= 730 },
-    { day: 1095, label: '3 Years', reached: daysElapsed >= 1095 },
-    { day: 1460, label: '4 Years', reached: daysElapsed >= 1460 },
-    { day: 1796, label: '2031!', reached: daysElapsed >= 1796 },
-  ];
+  const totalMoodEntries = Object.values(stats.moodDistribution).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 fade-in">
+    <div className="max-w-7xl mx-auto space-y-8 fade-in">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white">Timeline</h1>
-        <p className="text-gray-500 mt-1">Visualize your journey and track your consistency</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Timeline</h1>
+          <p className="text-gray-500 mt-1">Visualize your journey and track your progress over time</p>
+        </div>
+        <Link
+          href="/journal/new"
+          className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-purple-500 to-cyan-500 text-white rounded-xl font-semibold text-sm hover:shadow-lg hover:shadow-purple-500/30 transition-all hover:-translate-y-0.5"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          <span>Add Entry</span>
+        </Link>
       </div>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
-        <div className="stat-card">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-              <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white">{daysWithEntries}</p>
-              <p className="text-xs text-gray-500">Days Documented</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-              <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white">{daysElapsed}</p>
-              <p className="text-xs text-gray-500">Days Elapsed</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-              <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white">{daysRemaining}</p>
-              <p className="text-xs text-gray-500">Days Remaining</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
-              <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white">{consistency}%</p>
-              <p className="text-xs text-gray-500">Consistency</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Contribution Graph */}
-      <div className="card p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-lg font-semibold text-white">Contribution Graph</h2>
-            <p className="text-xs text-gray-500 mt-1">Your activity over the past year</p>
-          </div>
-        </div>
-        <ContributionGraph entries={state.entries} weeks={52} />
-      </div>
-
-      {/* Monthly Activity Chart */}
-      <div className="card p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-lg font-semibold text-white">Monthly Activity</h2>
-            <p className="text-xs text-gray-500 mt-1">Entries per month over the last year</p>
-          </div>
+      {/* Journey Progress Hero */}
+      <div className="card-glow p-8 relative overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-32 -right-32 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
+          <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl" />
         </div>
         
-        <div className="flex items-end gap-2 h-32">
-          {entriesByMonth.map((month, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-2">
-              <div 
-                className="w-full bg-gradient-to-t from-primary-500 to-accent-500 rounded-t transition-all duration-500 hover:opacity-80"
-                style={{ 
-                  height: `${(month.count / maxMonthlyEntries) * 100}%`,
-                  minHeight: month.count > 0 ? '4px' : '0'
-                }}
-                title={`${month.count} entries`}
-              />
-              <span className="text-[10px] text-gray-600">{month.month}</span>
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+            <span className="text-xs text-green-400 font-medium uppercase tracking-wider">Journey Progress</span>
+          </div>
+          
+          <div className="grid grid-cols-4 gap-8 mb-8">
+            <div>
+              <p className="text-5xl font-bold gradient-text">{stats.timeProgress.toFixed(1)}%</p>
+              <p className="text-sm text-gray-500 mt-1">Complete</p>
             </div>
-          ))}
+            <div>
+              <p className="text-5xl font-bold text-white">{stats.daysRemaining.toLocaleString()}</p>
+              <p className="text-sm text-gray-500 mt-1">Days Left</p>
+            </div>
+            <div>
+              <p className="text-5xl font-bold text-cyan-400">{1796 - stats.daysRemaining}</p>
+              <p className="text-sm text-gray-500 mt-1">Days Elapsed</p>
+            </div>
+            <div>
+              <p className="text-5xl font-bold text-pink-400">{Math.floor(stats.daysRemaining / 7)}</p>
+              <p className="text-sm text-gray-500 mt-1">Weeks Left</p>
+            </div>
+          </div>
+
+          <div className="h-4 bg-white/5 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-purple-500 via-cyan-500 to-pink-500 rounded-full relative animate-progress"
+              style={{ width: `${stats.timeProgress}%` }}
+            >
+              <div className="absolute inset-0 shimmer" />
+            </div>
+          </div>
+          <div className="flex justify-between mt-3 text-sm text-gray-500">
+            <span>Start (Jan 2026)</span>
+            <span>Now</span>
+            <span>End (Jan 2031)</span>
+          </div>
         </div>
       </div>
 
-      {/* Journey Progress & Mood Distribution */}
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
+        <div className="stat-card hover:border-purple-500/30">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
+              <span className="text-2xl">📝</span>
+            </div>
+            <span className="badge badge-primary">Total</span>
+          </div>
+          <p className="text-4xl font-bold text-white">{stats.totalEntries}</p>
+          <p className="text-sm text-gray-500 mt-1">Journal Entries</p>
+        </div>
+
+        <div className="stat-card hover:border-orange-500/30">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center">
+              <span className="text-2xl">🔥</span>
+            </div>
+            <span className="badge badge-warning">Streak</span>
+          </div>
+          <p className="text-4xl font-bold text-white">{stats.currentStreak}</p>
+          <p className="text-sm text-gray-500 mt-1">Current Streak</p>
+        </div>
+
+        <div className="stat-card hover:border-blue-500/30">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center">
+              <span className="text-2xl">🏆</span>
+            </div>
+            <span className="badge badge-success">Best</span>
+          </div>
+          <p className="text-4xl font-bold text-white">{stats.longestStreak}</p>
+          <p className="text-sm text-gray-500 mt-1">Longest Streak</p>
+        </div>
+
+        <div className="stat-card hover:border-green-500/30">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 flex items-center justify-center">
+              <span className="text-2xl">📅</span>
+            </div>
+          </div>
+          <p className="text-4xl font-bold text-white">{stats.uniqueDays}</p>
+          <p className="text-sm text-gray-500 mt-1">Active Days</p>
+        </div>
+      </div>
+
+      {/* Activity Graph */}
+      <div className="card p-8">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-xl font-bold text-white">Activity Heatmap</h2>
+            <p className="text-sm text-gray-500 mt-1">Your journaling activity over the past year</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">{stats.weeklyAvg} entries/week avg</span>
+          </div>
+        </div>
+        <ContributionGraph entries={state.entries} weeks={52} colorScheme="purple" />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Journey Milestones */}
+        {/* Monthly Activity */}
         <div className="card p-6">
-          <h2 className="text-lg font-semibold text-white mb-6">Journey Milestones</h2>
-          
-          <div className="relative">
-            {/* Progress line */}
-            <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-[#1a1a1a]">
-              <div 
-                className="w-full bg-gradient-to-b from-primary-500 to-accent-500 transition-all duration-1000"
-                style={{ height: `${(daysElapsed / totalDays) * 100}%` }}
-              />
-            </div>
-            
-            {/* Milestones */}
-            <div className="space-y-4">
-              {milestones.map((milestone, i) => (
-                <div key={i} className="flex items-center gap-4 pl-1">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center z-10 transition-all ${
-                    milestone.reached 
-                      ? 'bg-gradient-to-br from-primary-500 to-accent-500 shadow-lg shadow-primary-500/30' 
-                      : 'bg-[#1a1a1a] border border-[#2a2a2a]'
-                  }`}>
-                    {milestone.reached ? (
-                      <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : (
-                      <div className="w-2 h-2 rounded-full bg-[#333]" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <p className={`text-sm font-medium ${milestone.reached ? 'text-white' : 'text-gray-600'}`}>
-                      {milestone.label}
-                    </p>
-                    <p className="text-xs text-gray-600">Day {milestone.day}</p>
-                  </div>
-                  {milestone.reached && daysElapsed < milestones[i + 1]?.day && (
-                    <span className="text-xs px-2 py-1 rounded-full bg-primary-500/10 text-primary-400">Current</span>
-                  )}
+          <h2 className="text-xl font-bold text-white mb-6">Monthly Activity</h2>
+          <div className="space-y-4">
+            {stats.months.map((month, index) => (
+              <div key={month.label} className="group">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-400">{month.label}</span>
+                  <span className="text-sm font-semibold text-white">{month.count} entries</span>
                 </div>
-              ))}
-            </div>
+                <div className="h-3 bg-white/5 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full rounded-full transition-all duration-700 ease-out"
+                    style={{ 
+                      width: `${(month.count / stats.maxMonthlyCount) * 100}%`,
+                      background: `linear-gradient(90deg, #8b5cf6, #06b6d4)`,
+                      animationDelay: `${index * 100}ms`
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
         {/* Mood Distribution */}
         <div className="card p-6">
-          <h2 className="text-lg font-semibold text-white mb-6">Mood Distribution</h2>
-          
-          {totalMoods === 0 ? (
+          <h2 className="text-xl font-bold text-white mb-6">Mood Distribution</h2>
+          {totalMoodEntries === 0 ? (
             <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-2xl bg-yellow-500/10 flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">😊</span>
-              </div>
-              <p className="text-gray-400 text-sm">No mood data yet</p>
-              <p className="text-gray-600 text-xs mt-1">Start journaling to track your moods</p>
+              <p className="text-gray-500">No mood data yet</p>
+              <p className="text-sm text-gray-600 mt-1">Start journaling to see your mood patterns</p>
             </div>
           ) : (
             <div className="space-y-4">
               {MOOD_OPTIONS.map((mood) => {
-                const count = moodCounts[mood.value] || 0;
-                const percentage = totalMoods > 0 ? Math.round((count / totalMoods) * 100) : 0;
-                
+                const count = stats.moodDistribution[mood.value] || 0;
+                const percentage = totalMoodEntries > 0 ? Math.round((count / totalMoodEntries) * 100) : 0;
                 return (
-                  <div key={mood.value} className="flex items-center gap-3">
-                    <span className="text-xl w-8">{mood.emoji}</span>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm text-gray-400">{mood.label}</span>
-                        <span className="text-xs text-gray-500">{count} ({percentage}%)</span>
+                  <div key={mood.value} className="group">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{mood.emoji}</span>
+                        <span className="text-sm text-gray-400 capitalize">{mood.label}</span>
                       </div>
-                      <div className="h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
-                        <div 
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{ 
-                            width: `${percentage}%`,
-                            background: mood.value === 'great' ? '#10b981' :
-                                       mood.value === 'good' ? '#34d399' :
-                                       mood.value === 'okay' ? '#fbbf24' :
-                                       mood.value === 'bad' ? '#f97316' : '#ef4444'
-                          }}
-                        />
-                      </div>
+                      <span className="text-sm font-semibold text-white">{percentage}%</span>
+                    </div>
+                    <div className="h-3 bg-white/5 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ 
+                          width: `${percentage}%`,
+                          backgroundColor: moodColors[mood.value]
+                        }}
+                      />
                     </div>
                   </div>
                 );
@@ -265,47 +305,116 @@ export default function TimelinePage() {
         </div>
       </div>
 
-      {/* Overall Journey Progress */}
+      {/* Goals Progress */}
       <div className="card p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Overall Journey Progress</h2>
-        <div className="relative">
-          <div className="h-4 bg-[#1a1a1a] rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-primary-500 via-accent-500 to-pink-500 rounded-full transition-all duration-1000 relative"
-              style={{ width: `${(daysElapsed / totalDays) * 100}%` }}
-            >
-              <div className="absolute inset-0 shimmer" />
-            </div>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-xl font-bold text-white">Goals Progress</h2>
+            <p className="text-sm text-gray-500 mt-1">{stats.completedGoals} of {stats.totalGoals} goals completed</p>
           </div>
-          <div className="flex justify-between mt-3 text-xs">
-            <span className="text-gray-500">Start</span>
-            <span className="text-primary-400 font-medium">{((daysElapsed / totalDays) * 100).toFixed(1)}% Complete</span>
-            <span className="text-gray-500">Jan 1, 2031</span>
+          <Link 
+            href="/goals"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 text-sm text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+          >
+            View All
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+        </div>
+        
+        {state.goals.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">🎯</span>
+            </div>
+            <p className="text-gray-400 mb-1">No goals yet</p>
+            <p className="text-gray-600 text-sm mb-4">Create goals to track your progress</p>
+            <Link
+              href="/goals"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-white/5 text-gray-300 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Goal
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {state.goals.map((goal) => (
+              <div 
+                key={goal.id} 
+                className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div 
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
+                    style={{ backgroundColor: goal.color + '20' }}
+                  >
+                    🎯
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-white truncate">{goal.title}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${goal.progress}%`, backgroundColor: goal.color }}
+                    />
+                  </div>
+                  <span className="text-xs font-semibold text-gray-400">{goal.progress}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Milestones */}
+      <div className="card p-6">
+        <h2 className="text-xl font-bold text-white mb-6">Journey Milestones</h2>
+        <div className="relative">
+          <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-purple-500 via-cyan-500 to-pink-500" />
+          <div className="space-y-8">
+            {[
+              { days: 1796, label: 'Journey Begins', icon: '🚀', completed: true },
+              { days: 1500, label: '296 Days Complete', icon: '⭐', completed: 1796 - stats.daysRemaining >= 296 },
+              { days: 1000, label: 'Halfway There', icon: '🎯', completed: 1796 - stats.daysRemaining >= 898 },
+              { days: 500, label: '500 Days to Go', icon: '💪', completed: stats.daysRemaining <= 500 },
+              { days: 100, label: 'Final Stretch', icon: '🏃', completed: stats.daysRemaining <= 100 },
+              { days: 0, label: 'Goal Achieved!', icon: '🎉', completed: stats.daysRemaining <= 0 },
+            ].map((milestone, index) => (
+              <div key={index} className="flex items-center gap-6 relative">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl z-10 ${
+                  milestone.completed 
+                    ? 'bg-gradient-to-br from-purple-500 to-cyan-500 shadow-lg shadow-purple-500/30' 
+                    : 'bg-white/5 border border-white/10'
+                }`}>
+                  {milestone.icon}
+                </div>
+                <div>
+                  <p className={`font-semibold ${milestone.completed ? 'text-white' : 'text-gray-500'}`}>
+                    {milestone.label}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {milestone.completed ? 'Completed' : `${milestone.days} days remaining`}
+                  </p>
+                </div>
+                {milestone.completed && (
+                  <div className="ml-auto">
+                    <span className="px-3 py-1 rounded-full bg-green-500/10 text-green-400 text-xs font-medium">
+                      ✓ Achieved
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </div>
-
-      {/* CTA */}
-      {state.entries.length === 0 && (
-        <div className="card p-8 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500/20 to-accent-500/20 flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">📅</span>
-          </div>
-          <h2 className="text-lg font-semibold text-white mb-2">Start Building Your Timeline</h2>
-          <p className="text-gray-500 text-sm mb-6">
-            Every entry adds color to your journey. Start documenting today!
-          </p>
-          <Link
-            href="/journal/new"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-xl font-medium text-sm hover:shadow-lg hover:shadow-primary-500/25 transition-all"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Write First Entry
-          </Link>
-        </div>
-      )}
     </div>
   );
 }
