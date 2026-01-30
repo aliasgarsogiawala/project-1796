@@ -1,10 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { loadState, deleteEntry } from '@/lib/storage';
+import { loadState, deleteEntry, formatRelativeDate } from '@/lib/storage';
 import { AppState, MOOD_OPTIONS, ENTRY_TYPES } from '@/types';
 import Link from 'next/link';
-import { formatRelativeDate } from '@/lib/storage';
 
 export default function JournalPage() {
   const [state, setState] = useState<AppState | null>(null);
@@ -28,7 +27,7 @@ export default function JournalPage() {
   if (!mounted || !state) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="animate-pulse text-gray-500">Loading...</div>
+        <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -57,91 +56,100 @@ export default function JournalPage() {
   );
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-8 fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">Journal</h1>
-          <p className="text-gray-400 mt-1">Document your journey and reflections</p>
+          <h1 className="text-2xl font-bold text-white">Journal</h1>
+          <p className="text-gray-500 mt-1">Document your journey and reflections</p>
         </div>
         <Link
           href="/journal/new"
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg font-medium hover:opacity-90 transition-opacity"
+          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-xl font-medium text-sm hover:shadow-lg hover:shadow-primary-500/25 transition-all hover:-translate-y-0.5"
         >
-          <span>+</span>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
           <span>New Entry</span>
         </Link>
       </div>
 
       {/* Filters & Search */}
-      <div className="glass rounded-xl p-4 flex flex-col sm:flex-row gap-4">
-        {/* Type Filter */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              filter === 'all' 
-                ? 'bg-primary-500/20 text-primary-400' 
-                : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            All
-          </button>
-          {ENTRY_TYPES.map((type) => (
+      <div className="card p-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* Type Filter */}
+          <div className="flex gap-1 p-1 bg-[#0a0a0a] rounded-lg">
             <button
-              key={type.value}
-              onClick={() => setFilter(type.value as typeof filter)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                filter === type.value 
-                  ? 'bg-primary-500/20 text-primary-400' 
-                  : 'text-gray-400 hover:text-white'
+              onClick={() => setFilter('all')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                filter === 'all' 
+                  ? 'bg-white/10 text-white' 
+                  : 'text-gray-500 hover:text-white'
               }`}
             >
-              {type.label}
+              All
             </button>
-          ))}
-        </div>
+            {ENTRY_TYPES.map((type) => (
+              <button
+                key={type.value}
+                onClick={() => setFilter(type.value as typeof filter)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  filter === type.value 
+                    ? 'bg-white/10 text-white' 
+                    : 'text-gray-500 hover:text-white'
+                }`}
+              >
+                {type.label}
+              </button>
+            ))}
+          </div>
 
-        {/* Search */}
-        <div className="flex-1">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search entries..."
-            className="w-full px-4 py-2 bg-white/5 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
-          />
+          {/* Search */}
+          <div className="flex-1 relative">
+            <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search entries..."
+              className="input pl-10"
+            />
+          </div>
         </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="glass rounded-xl p-4 text-center">
+        <div className="stat-card text-center">
           <p className="text-2xl font-bold text-white">{state.entries.length}</p>
-          <p className="text-sm text-gray-400">Total Entries</p>
+          <p className="text-xs text-gray-500 mt-1">Total Entries</p>
         </div>
-        <div className="glass rounded-xl p-4 text-center">
+        <div className="stat-card text-center">
           <p className="text-2xl font-bold text-white">
             {state.entries.filter(e => e.type === 'journal').length}
           </p>
-          <p className="text-sm text-gray-400">Daily Journals</p>
+          <p className="text-xs text-gray-500 mt-1">Daily Journals</p>
         </div>
-        <div className="glass rounded-xl p-4 text-center">
+        <div className="stat-card text-center">
           <p className="text-2xl font-bold text-white">
             {state.entries.filter(e => e.type === 'blog').length}
           </p>
-          <p className="text-sm text-gray-400">Blog Posts</p>
+          <p className="text-xs text-gray-500 mt-1">Blog Posts</p>
         </div>
       </div>
 
       {/* Entries List */}
       {filteredEntries.length === 0 ? (
-        <div className="glass rounded-xl p-12 text-center">
-          <div className="text-6xl mb-4">📝</div>
+        <div className="card p-12 text-center">
+          <div className="w-20 h-20 rounded-2xl bg-blue-500/10 flex items-center justify-center mx-auto mb-6">
+            <span className="text-4xl">📝</span>
+          </div>
           <h2 className="text-xl font-semibold text-white mb-2">
             {state.entries.length === 0 ? 'No entries yet' : 'No matching entries'}
           </h2>
-          <p className="text-gray-400 mb-6">
+          <p className="text-gray-500 mb-6 max-w-md mx-auto">
             {state.entries.length === 0 
               ? 'Start documenting your journey by creating your first entry.'
               : 'Try adjusting your filters or search query.'}
@@ -149,10 +157,12 @@ export default function JournalPage() {
           {state.entries.length === 0 && (
             <Link
               href="/journal/new"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg font-medium hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-xl font-medium text-sm hover:shadow-lg hover:shadow-primary-500/25 transition-all"
             >
-              <span>+</span>
-              <span>Write Your First Entry</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Write Your First Entry
             </Link>
           )}
         </div>
@@ -169,69 +179,75 @@ export default function JournalPage() {
             
             return (
               <div key={dateKey}>
-                <h3 className="text-sm font-medium text-gray-500 mb-4">{displayDate}</h3>
-                <div className="space-y-4">
+                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-4">{displayDate}</h3>
+                <div className="space-y-3">
                   {dayEntries.map((entry) => {
                     const mood = MOOD_OPTIONS.find(m => m.value === entry.mood);
                     const entryType = ENTRY_TYPES.find(t => t.value === entry.type);
                     const linkedGoals = state.goals.filter(g => entry.linkedGoals.includes(g.id));
                     
                     return (
-                      <div key={entry.id} className="glass rounded-xl p-5 card-hover">
+                      <div key={entry.id} className="card p-5 group">
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center gap-3">
                             <span className="text-2xl">{mood?.emoji}</span>
                             <div>
-                              <h3 className="text-lg font-semibold text-white">{entry.title}</h3>
-                              <p className="text-xs text-gray-500">
-                                {entryType?.label} · {formatRelativeDate(entry.createdAt)}
+                              <h3 className="text-base font-semibold text-white group-hover:text-primary-400 transition-colors">{entry.title}</h3>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {entryType?.label}
+                                <span className="mx-1.5">·</span>
+                                {formatRelativeDate(entry.createdAt)}
                               </p>
                             </div>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Link
                               href={`/journal/${entry.id}`}
-                              className="p-2 text-gray-400 hover:text-white transition-colors"
+                              className="p-2 text-gray-500 hover:text-white hover:bg-white/5 rounded-lg transition-all"
                             >
-                              ↗
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
                             </Link>
                             <button
                               onClick={() => handleDelete(entry.id)}
-                              className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                              className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-500/5 rounded-lg transition-all"
                             >
-                              ×
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
                             </button>
                           </div>
                         </div>
 
                         {/* Content Preview */}
-                        <p className="text-gray-400 text-sm mb-4 line-clamp-3">
+                        <p className="text-gray-400 text-sm mb-4 line-clamp-2">
                           {entry.content}
                         </p>
 
                         {/* Tags & Goals */}
-                        <div className="flex flex-wrap gap-2">
-                          {entry.tags.map((tag) => (
-                            <span 
-                              key={tag}
-                              className="px-2 py-1 bg-white/5 rounded text-xs text-gray-400"
-                            >
-                              #{tag}
-                            </span>
-                          ))}
-                          {linkedGoals.map((goal) => (
-                            <span 
-                              key={goal.id}
-                              className="px-2 py-1 rounded text-xs"
-                              style={{ 
-                                backgroundColor: goal.color + '20',
-                                color: goal.color 
-                              }}
-                            >
-                              🎯 {goal.title}
-                            </span>
-                          ))}
-                        </div>
+                        {(entry.tags.length > 0 || linkedGoals.length > 0) && (
+                          <div className="flex flex-wrap gap-2">
+                            {entry.tags.map((tag) => (
+                              <span key={tag} className="tag">
+                                #{tag}
+                              </span>
+                            ))}
+                            {linkedGoals.map((goal) => (
+                              <span 
+                                key={goal.id}
+                                className="tag"
+                                style={{ 
+                                  backgroundColor: goal.color + '15',
+                                  color: goal.color 
+                                }}
+                              >
+                                🎯 {goal.title}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}

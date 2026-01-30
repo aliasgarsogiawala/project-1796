@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { loadState, updateEntry, deleteEntry, formatDate } from '@/lib/storage';
-import { AppState, JournalEntry, MOOD_OPTIONS, ENTRY_TYPES } from '@/types';
+import { AppState, JournalEntry, MOOD_OPTIONS, ENTRY_TYPES, GOAL_CATEGORIES } from '@/types';
 import Link from 'next/link';
 
 export default function EntryDetailPage() {
@@ -80,23 +80,34 @@ export default function EntryDetailPage() {
   if (!mounted || !state) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="animate-pulse text-gray-500">Loading...</div>
+        <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!entry) {
     return (
-      <div className="max-w-3xl mx-auto text-center py-12">
-        <div className="text-6xl mb-4">🔍</div>
-        <h2 className="text-xl font-semibold text-white mb-2">Entry not found</h2>
-        <p className="text-gray-400 mb-6">This entry may have been deleted.</p>
-        <Link
-          href="/journal"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-primary-500/20 text-primary-400 rounded-lg hover:bg-primary-500/30 transition-colors"
-        >
-          ← Back to Journal
-        </Link>
+      <div className="max-w-3xl mx-auto fade-in">
+        <div className="card p-12 text-center">
+          <div className="w-20 h-20 rounded-2xl bg-gray-500/10 flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-white mb-2">Entry not found</h2>
+          <p className="text-gray-500 mb-6 max-w-md mx-auto">
+            This entry may have been deleted or the link is incorrect.
+          </p>
+          <Link
+            href="/journal"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-xl font-medium text-sm hover:shadow-lg hover:shadow-primary-500/25 transition-all"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Journal
+          </Link>
+        </div>
       </div>
     );
   }
@@ -106,57 +117,64 @@ export default function EntryDetailPage() {
   const linkedGoals = state.goals.filter(g => entry.linkedGoals.includes(g.id));
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
+    <div className="max-w-3xl mx-auto space-y-6 fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <Link
           href="/journal"
-          className="text-gray-400 hover:text-white transition-colors"
+          className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors text-sm"
         >
-          ← Back to Journal
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Journal
         </Link>
-        <div className="flex gap-2">
-          {!isEditing && (
-            <>
-              <button
-                onClick={() => setIsEditing(true)}
-                className="px-4 py-2 text-primary-400 hover:text-primary-300 transition-colors"
-              >
-                Edit
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-4 py-2 text-red-400 hover:text-red-300 transition-colors"
-              >
-                Delete
-              </button>
-            </>
-          )}
-        </div>
+        {!isEditing && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => setIsEditing(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm text-primary-400 hover:text-primary-300 hover:bg-primary-500/10 rounded-lg transition-all"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Edit
+            </button>
+            <button
+              onClick={handleDelete}
+              className="flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-all"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete
+            </button>
+          </div>
+        )}
       </div>
 
       {isEditing ? (
         /* Edit Mode */
         <div className="space-y-6">
           {/* Mood */}
-          <div className="glass rounded-xl p-6">
-            <label className="block text-sm font-medium text-gray-300 mb-3">
+          <div className="card p-6">
+            <label className="block text-sm font-medium text-gray-400 mb-4">
               Mood
             </label>
-            <div className="flex gap-4 justify-center">
+            <div className="flex gap-3 justify-center">
               {MOOD_OPTIONS.map((m) => (
                 <button
                   key={m.value}
                   type="button"
                   onClick={() => setEditMood(m.value as JournalEntry['mood'])}
-                  className={`flex flex-col items-center p-3 rounded-lg transition-all ${
+                  className={`flex flex-col items-center p-4 rounded-xl transition-all ${
                     editMood === m.value
-                      ? 'bg-white/10 scale-110'
+                      ? 'bg-white/10 scale-105 ring-2 ring-primary-500/50'
                       : 'hover:bg-white/5'
                   }`}
                 >
-                  <span className="text-3xl mb-1">{m.emoji}</span>
-                  <span className={`text-xs ${editMood === m.value ? 'text-white' : 'text-gray-500'}`}>
+                  <span className="text-3xl mb-2">{m.emoji}</span>
+                  <span className={`text-xs font-medium ${editMood === m.value ? 'text-white' : 'text-gray-500'}`}>
                     {m.label}
                   </span>
                 </button>
@@ -165,84 +183,98 @@ export default function EntryDetailPage() {
           </div>
 
           {/* Title & Content */}
-          <div className="glass rounded-xl p-6 space-y-4">
+          <div className="card p-6 space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gray-400 mb-2">
                 Title
               </label>
               <input
                 type="text"
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
+                className="input"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gray-400 mb-2">
                 Content
               </label>
               <textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 rows={12}
-                className="w-full px-4 py-3 bg-white/5 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 resize-none"
+                className="input resize-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Tags (comma-separated)
+              <label className="block text-sm font-medium text-gray-400 mb-2">
+                Tags
               </label>
               <input
                 type="text"
                 value={editTagsInput}
                 onChange={(e) => setEditTagsInput(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
+                placeholder="Separate tags with commas"
+                className="input"
               />
             </div>
           </div>
 
           {/* Link to Goals */}
           {state.goals.length > 0 && (
-            <div className="glass rounded-xl p-6">
-              <label className="block text-sm font-medium text-gray-300 mb-3">
+            <div className="card p-6">
+              <label className="block text-sm font-medium text-gray-400 mb-4">
                 Linked Goals
               </label>
               <div className="flex flex-wrap gap-2">
-                {state.goals.map((goal) => (
-                  <button
-                    key={goal.id}
-                    type="button"
-                    onClick={() => toggleGoal(goal.id)}
-                    className={`px-3 py-2 rounded-lg text-sm transition-all ${
-                      editLinkedGoals.includes(goal.id)
-                        ? 'ring-2 ring-offset-2 ring-offset-gray-900'
-                        : 'opacity-60 hover:opacity-100'
-                    }`}
-                    style={{
-                      backgroundColor: goal.color + (editLinkedGoals.includes(goal.id) ? '40' : '20'),
-                      color: goal.color,
-                    }}
-                  >
-                    🎯 {goal.title}
-                  </button>
-                ))}
+                {state.goals.map((goal) => {
+                  const category = GOAL_CATEGORIES.find(c => c.value === goal.category);
+                  return (
+                    <button
+                      key={goal.id}
+                      type="button"
+                      onClick={() => toggleGoal(goal.id)}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                        editLinkedGoals.includes(goal.id)
+                          ? 'ring-2 ring-offset-2 ring-offset-[#111]'
+                          : 'opacity-60 hover:opacity-100'
+                      }`}
+                      style={{
+                        backgroundColor: goal.color + (editLinkedGoals.includes(goal.id) ? '30' : '15'),
+                        color: editLinkedGoals.includes(goal.id) ? goal.color : '#999',
+                        ['--tw-ring-color' as string]: editLinkedGoals.includes(goal.id) ? goal.color : undefined
+                      }}
+                    >
+                      <span>{category?.emoji}</span>
+                      <span>{goal.title}</span>
+                      {editLinkedGoals.includes(goal.id) && (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
 
           {/* Actions */}
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 pt-2">
             <button
               onClick={() => setIsEditing(false)}
-              className="px-6 py-3 text-gray-400 hover:text-white transition-colors"
+              className="btn-secondary"
             >
               Cancel
             </button>
             <button
               onClick={handleSaveEdit}
               disabled={!editTitle.trim() || !editContent.trim()}
-              className="px-8 py-3 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
               Save Changes
             </button>
           </div>
@@ -250,56 +282,76 @@ export default function EntryDetailPage() {
       ) : (
         /* View Mode */
         <article className="space-y-6">
-          {/* Entry Header */}
-          <div className="glass rounded-xl p-8">
-            <div className="flex items-center gap-4 mb-6">
-              <span className="text-5xl">{mood?.emoji}</span>
-              <div>
-                <p className="text-sm text-gray-500">
-                  {entryType?.label} · {formatDate(entry.date)}
-                </p>
-                <h1 className="text-2xl font-bold text-white mt-1">{entry.title}</h1>
+          {/* Entry Header Card */}
+          <div className="card p-8">
+            {/* Type Badge & Date */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <span className={`px-3 py-1 rounded-lg text-xs font-medium ${
+                  entry.type === 'journal' 
+                    ? 'bg-blue-500/10 text-blue-400' 
+                    : entry.type === 'blog' 
+                    ? 'bg-green-500/10 text-green-400'
+                    : 'bg-purple-500/10 text-purple-400'
+                }`}>
+                  {entryType?.label}
+                </span>
+                <span className="text-sm text-gray-500">{formatDate(entry.date)}</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-4xl">{mood?.emoji}</span>
+                <span className="text-xs text-gray-500 mt-1">{mood?.label}</span>
               </div>
             </div>
 
-            {/* Tags */}
+            {/* Title */}
+            <h1 className="text-2xl font-bold text-white mb-6">{entry.title}</h1>
+
+            {/* Tags & Linked Goals */}
             {(entry.tags.length > 0 || linkedGoals.length > 0) && (
-              <div className="flex flex-wrap gap-2 mb-6">
+              <div className="flex flex-wrap gap-2 mb-6 pb-6 border-b border-[#1a1a1a]">
                 {entry.tags.map((tag) => (
                   <span 
                     key={tag}
-                    className="px-3 py-1 bg-white/5 rounded-full text-sm text-gray-400"
+                    className="px-3 py-1.5 bg-[#1a1a1a] rounded-lg text-xs text-gray-400"
                   >
                     #{tag}
                   </span>
                 ))}
-                {linkedGoals.map((goal) => (
-                  <Link
-                    key={goal.id}
-                    href="/goals"
-                    className="px-3 py-1 rounded-full text-sm hover:opacity-80 transition-opacity"
-                    style={{ 
-                      backgroundColor: goal.color + '20',
-                      color: goal.color 
-                    }}
-                  >
-                    🎯 {goal.title}
-                  </Link>
-                ))}
+                {linkedGoals.map((goal) => {
+                  const category = GOAL_CATEGORIES.find(c => c.value === goal.category);
+                  return (
+                    <Link
+                      key={goal.id}
+                      href="/goals"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium hover:opacity-80 transition-opacity"
+                      style={{ 
+                        backgroundColor: goal.color + '15',
+                        color: goal.color 
+                      }}
+                    >
+                      <span>{category?.emoji}</span>
+                      <span>{goal.title}</span>
+                    </Link>
+                  );
+                })}
               </div>
             )}
 
             {/* Content */}
             <div className="prose prose-invert max-w-none">
-              <div className="text-gray-300 whitespace-pre-wrap leading-relaxed">
+              <div className="text-gray-300 whitespace-pre-wrap leading-relaxed text-[15px]">
                 {entry.content}
               </div>
             </div>
           </div>
 
-          {/* Meta */}
-          <div className="text-center text-sm text-gray-500">
-            Created {formatDate(entry.createdAt)}
+          {/* Meta Footer */}
+          <div className="flex items-center justify-center gap-2 text-xs text-gray-600">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Created {formatDate(entry.createdAt)}</span>
           </div>
         </article>
       )}
