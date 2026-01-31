@@ -24,7 +24,6 @@ export default function Dashboard() {
   const [daysRemaining, setDaysRemaining] = useState(1796);
   const [timeProgress, setTimeProgress] = useState(0);
   const [mounted, setMounted] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
 
   const quote = useMemo(() => {
     const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
@@ -40,7 +39,6 @@ export default function Dashboard() {
     const interval = setInterval(() => {
       setDaysRemaining(getDaysRemaining());
       setTimeProgress(getTimeProgress());
-      setCurrentTime(new Date());
     }, 1000);
 
     return () => clearInterval(interval);
@@ -48,10 +46,10 @@ export default function Dashboard() {
 
   if (!mounted || !state) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="relative">
-          <div className="w-16 h-16 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
-          <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-r-cyan-500 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-slate-400">Loading...</span>
         </div>
       </div>
     );
@@ -77,172 +75,136 @@ export default function Dashboard() {
     : 0;
 
   const getMoodLabel = (score: number) => {
-    if (score >= 4.5) return { label: 'Excellent', color: 'text-green-400', bg: 'bg-green-500/10' };
-    if (score >= 3.5) return { label: 'Good', color: 'text-emerald-400', bg: 'bg-emerald-500/10' };
-    if (score >= 2.5) return { label: 'Okay', color: 'text-yellow-400', bg: 'bg-yellow-500/10' };
-    if (score >= 1.5) return { label: 'Low', color: 'text-orange-400', bg: 'bg-orange-500/10' };
-    return { label: 'Needs attention', color: 'text-red-400', bg: 'bg-red-500/10' };
+    if (score >= 4.5) return { label: 'Excellent', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' };
+    if (score >= 3.5) return { label: 'Good', color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' };
+    if (score >= 2.5) return { label: 'Okay', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' };
+    if (score >= 1.5) return { label: 'Low', color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' };
+    return { label: 'Needs Attention', color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' };
   };
 
   const moodInfo = avgMood > 0 ? getMoodLabel(avgMood) : null;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 fade-in">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-purple-400 font-medium mb-1">Welcome back!</p>
-          <h1 className="text-3xl font-bold text-white">
-            {currentTime.getHours() < 12 ? 'Good Morning' : currentTime.getHours() < 17 ? 'Good Afternoon' : 'Good Evening'}
-          </h1>
-          <p className="text-gray-500 mt-1">
-            {currentTime.toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              month: 'long', 
-              day: 'numeric',
-              year: 'numeric'
-            })}
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-4xl font-bold text-white tracking-tight">
-            {currentTime.toLocaleTimeString('en-US', { 
-              hour: '2-digit', 
-              minute: '2-digit',
-              hour12: true 
-            })}
-          </p>
-        </div>
-      </div>
-
+    <div className="space-y-6 fade-in">
+      
       {/* Hero Countdown Section */}
-      <div className="card-glow p-8 relative overflow-hidden">
-        {/* Animated background gradient */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-32 -right-32 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+      <div className="card-accent p-8">
+        <div className="flex items-center gap-2 mb-6">
+          <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+          <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">Countdown Active</span>
         </div>
         
-        <div className="relative z-10">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
-            {/* Main countdown */}
-            <div className="text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 mb-4">
-                <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
-                <span className="text-xs text-purple-400 font-medium">COUNTDOWN ACTIVE</span>
-              </div>
-              <div className="countdown-number pulse-glow inline-block">
-                {daysRemaining.toLocaleString()}
-              </div>
-              <p className="text-xl text-gray-400 mt-2 font-medium">days until <span className="text-white">January 1, 2031</span></p>
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
+          <div>
+            <div className="text-6xl lg:text-7xl font-bold text-white tracking-tight">
+              {daysRemaining.toLocaleString()}
             </div>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-3 gap-4 lg:gap-8">
-              <div className="text-center p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05]">
-                <p className="text-4xl font-bold gradient-text">{daysElapsed}</p>
-                <p className="text-xs text-gray-500 mt-1 font-medium">Days Elapsed</p>
-              </div>
-              <div className="text-center p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05]">
-                <p className="text-4xl font-bold text-cyan-400">{timeProgress.toFixed(1)}%</p>
-                <p className="text-xs text-gray-500 mt-1 font-medium">Journey Complete</p>
-              </div>
-              <div className="text-center p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05]">
-                <p className="text-4xl font-bold text-pink-400">{(daysRemaining / 7).toFixed(0)}</p>
-                <p className="text-xs text-gray-500 mt-1 font-medium">Weeks Left</p>
-              </div>
-            </div>
+            <p className="text-lg text-slate-400 mt-2">
+              days until <span className="text-white font-semibold">January 1, 2031</span>
+            </p>
           </div>
 
-          {/* Progress Bar */}
-          <div className="mt-10">
-            <div className="flex justify-between mb-3">
-              <span className="text-sm text-gray-400">Journey Progress</span>
-              <span className="text-sm font-semibold text-white">{timeProgress.toFixed(2)}%</span>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-[#1a1a25] p-4 rounded-xl border border-white/10 text-center">
+              <p className="text-3xl font-bold text-white">{daysElapsed}</p>
+              <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider">Days Elapsed</p>
             </div>
-            <div className="h-3 bg-white/[0.05] rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-purple-500 via-cyan-500 to-pink-500 rounded-full animate-progress relative"
-                style={{ width: `${timeProgress}%` }}
-              >
-                <div className="absolute inset-0 shimmer" />
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg shadow-purple-500/50" />
-              </div>
+            <div className="bg-[#1a1a25] p-4 rounded-xl border border-white/10 text-center">
+              <p className="text-3xl font-bold text-cyan-400">{timeProgress.toFixed(1)}%</p>
+              <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider">Complete</p>
             </div>
-            <div className="flex justify-between mt-2 text-xs text-gray-600">
-              <span>2026</span>
-              <span>2031</span>
+            <div className="bg-[#1a1a25] p-4 rounded-xl border border-white/10 text-center">
+              <p className="text-3xl font-bold text-blue-400">{Math.floor(daysRemaining / 7)}</p>
+              <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider">Weeks Left</p>
             </div>
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <div className="flex justify-between mb-2 text-sm">
+            <span className="text-slate-400">Journey Progress</span>
+            <span className="text-white font-semibold">{timeProgress.toFixed(2)}%</span>
+          </div>
+          <div className="h-3 bg-[#0a0a0f] rounded-full overflow-hidden">
+            <div 
+              className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-500"
+              style={{ width: `${timeProgress}%` }}
+            />
+          </div>
+          <div className="flex justify-between mt-2 text-xs text-slate-600">
+            <span>2026</span>
+            <span>2031</span>
           </div>
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
-        <div className="stat-card group hover:border-orange-500/30">
-          <div className="flex items-center justify-between">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-              <span className="text-2xl">🔥</span>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="card p-5 hover:border-orange-500/30 transition-colors">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
+              <span className="text-xl">🔥</span>
             </div>
-            <span className="badge badge-warning">Active</span>
+            <span className="badge badge-orange">Active</span>
           </div>
-          <p className="text-4xl font-bold text-white mt-4">{streak}</p>
-          <p className="text-sm text-gray-500 mt-1">Day Streak</p>
-          <div className="mt-3 h-1 bg-white/5 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-orange-500 to-red-500" style={{ width: `${Math.min(streak * 10, 100)}%` }} />
+          <p className="text-3xl font-bold text-white">{streak}</p>
+          <p className="text-sm text-slate-400 mt-1">Day Streak</p>
+          <div className="mt-3 h-1.5 bg-[#0a0a0f] rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full" style={{ width: `${Math.min(streak * 10, 100)}%` }} />
           </div>
         </div>
 
-        <div className="stat-card group hover:border-blue-500/30">
-          <div className="flex items-center justify-between">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-              <span className="text-2xl">📝</span>
+        <div className="card p-5 hover:border-cyan-500/30 transition-colors">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center">
+              <span className="text-xl">📝</span>
             </div>
-            <span className="badge badge-primary">Total</span>
+            <span className="badge badge-cyan">Total</span>
           </div>
-          <p className="text-4xl font-bold text-white mt-4">{state.entries.length}</p>
-          <p className="text-sm text-gray-500 mt-1">Journal Entries</p>
-          <div className="mt-3 h-1 bg-white/5 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-500" style={{ width: `${Math.min(state.entries.length, 100)}%` }} />
+          <p className="text-3xl font-bold text-white">{state.entries.length}</p>
+          <p className="text-sm text-slate-400 mt-1">Journal Entries</p>
+          <div className="mt-3 h-1.5 bg-[#0a0a0f] rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full" style={{ width: `${Math.min(state.entries.length, 100)}%` }} />
           </div>
         </div>
 
-        <div className="stat-card group hover:border-purple-500/30">
-          <div className="flex items-center justify-between">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-              <span className="text-2xl">🎯</span>
+        <div className="card p-5 hover:border-purple-500/30 transition-colors">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+              <span className="text-xl">🎯</span>
             </div>
-            <span className="badge badge-success">Active</span>
+            <span className="badge badge-green">Active</span>
           </div>
-          <p className="text-4xl font-bold text-white mt-4">{state.goals.length}</p>
-          <p className="text-sm text-gray-500 mt-1">Goals Set</p>
-          <div className="mt-3 h-1 bg-white/5 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500" style={{ width: `${Math.min(state.goals.length * 20, 100)}%` }} />
+          <p className="text-3xl font-bold text-white">{state.goals.length}</p>
+          <p className="text-sm text-slate-400 mt-1">Goals Set</p>
+          <div className="mt-3 h-1.5 bg-[#0a0a0f] rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full" style={{ width: `${Math.min(state.goals.length * 20, 100)}%` }} />
           </div>
         </div>
 
-        <div className="stat-card group hover:border-green-500/30">
-          <div className="flex items-center justify-between">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-              <span className="text-2xl">✨</span>
+        <div className="card p-5 hover:border-emerald-500/30 transition-colors">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+              <span className="text-xl">✨</span>
             </div>
-            <span className={`text-xs px-2 py-1 rounded-full ${moodInfo?.bg || 'bg-gray-500/10'} ${moodInfo?.color || 'text-gray-400'} font-medium`}>
-              {moodInfo?.label || 'No data'}
-            </span>
+            {moodInfo && (
+              <span className={`text-xs px-2 py-1 rounded-full ${moodInfo.bg} ${moodInfo.color} border ${moodInfo.border}`}>
+                {moodInfo.label}
+              </span>
+            )}
           </div>
-          <p className="text-4xl font-bold text-white mt-4">{todayEntries.length}</p>
-          <p className="text-sm text-gray-500 mt-1">Today&apos;s Entries</p>
-          <div className="mt-3 h-1 bg-white/5 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-green-500 to-emerald-500" style={{ width: `${todayEntries.length > 0 ? 100 : 0}%` }} />
+          <p className="text-3xl font-bold text-white">{todayEntries.length}</p>
+          <p className="text-sm text-slate-400 mt-1">Today&apos;s Entries</p>
+          <div className="mt-3 h-1.5 bg-[#0a0a0f] rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full" style={{ width: `${todayEntries.length > 0 ? 100 : 0}%` }} />
           </div>
         </div>
       </div>
 
-      {/* Motivational Quote */}
-      <div className="quote-card">
-        <p className="text-xl text-white font-medium leading-relaxed relative z-10">{quote.text}</p>
-        <p className="text-sm text-purple-400 mt-4 font-medium">— {quote.author}</p>
+      {/* Quote Card */}
+      <div className="card p-6 bg-gradient-to-r from-cyan-500/5 to-blue-500/5 border-cyan-500/20">
+        <p className="text-lg text-slate-200 italic">&ldquo;{quote.text}&rdquo;</p>
+        <p className="text-sm text-cyan-400 mt-3">— {quote.author}</p>
       </div>
 
       {/* Activity Graph */}
@@ -250,54 +212,46 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-bold text-white">Activity Overview</h2>
-            <p className="text-sm text-gray-500 mt-1">Your journaling activity over time</p>
+            <p className="text-sm text-slate-400 mt-1">Your journaling activity over time</p>
           </div>
           <Link 
             href="/timeline" 
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 text-sm text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+            className="btn-secondary text-sm py-2 px-4"
           >
             View Timeline
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
           </Link>
         </div>
-        <ContributionGraph entries={state.entries} weeks={26} colorScheme="purple" />
+        <ContributionGraph entries={state.entries} weeks={26} colorScheme="blue" />
       </div>
 
+      {/* Bottom Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Goals Overview */}
+        {/* Goals */}
         <div className="card p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-xl font-bold text-white">Your Goals</h2>
-              <p className="text-sm text-gray-500 mt-1">{state.goals.length} active goals</p>
+              <p className="text-sm text-slate-400 mt-1">{state.goals.length} active goals</p>
             </div>
             <Link 
               href="/goals" 
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 text-sm text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+              className="btn-secondary text-sm py-2 px-4"
             >
               Manage
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
             </Link>
           </div>
           
           {state.goals.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 flex items-center justify-center mx-auto mb-4">
-                <span className="text-4xl">🎯</span>
+            <div className="text-center py-10">
+              <div className="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">🎯</span>
               </div>
-              <p className="text-gray-400 mb-1">No goals yet</p>
-              <p className="text-gray-600 text-sm mb-6">Start by setting your first goal</p>
+              <p className="text-slate-400 mb-1">No goals yet</p>
+              <p className="text-slate-500 text-sm mb-4">Start by setting your first goal</p>
               <Link
                 href="/goals"
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border border-purple-500/20 text-purple-400 rounded-xl hover:bg-purple-500/20 transition-all"
+                className="btn-primary text-sm"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
                 Add Goal
               </Link>
             </div>
@@ -310,29 +264,29 @@ export default function Dashboard() {
                   <Link 
                     key={goal.id} 
                     href="/goals"
-                    className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-transparent hover:border-white/[0.05] transition-all group cursor-pointer"
+                    className="flex items-center gap-4 p-4 rounded-xl bg-[#1a1a25] hover:bg-[#1f1f2e] border border-white/5 hover:border-white/10 transition-all group"
                   >
                     <div 
-                      className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0 transition-transform group-hover:scale-110"
+                      className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0"
                       style={{ backgroundColor: goal.color + '20' }}
                     >
                       {category?.emoji}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white font-semibold truncate group-hover:text-purple-400 transition-colors">{goal.title}</p>
+                      <p className="text-sm text-white font-medium truncate group-hover:text-cyan-400 transition-colors">{goal.title}</p>
                       <div className="flex items-center gap-3 mt-2">
-                        <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                        <div className="flex-1 h-2 bg-[#0a0a0f] rounded-full overflow-hidden">
                           <div 
                             className="h-full rounded-full transition-all duration-500"
                             style={{ width: `${goal.progress}%`, backgroundColor: goal.color }}
                           />
                         </div>
-                        <span className="text-xs text-gray-500 font-semibold">{goal.progress}%</span>
+                        <span className="text-xs text-slate-400 font-semibold">{goal.progress}%</span>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-lg font-bold text-white">{contributions}</p>
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider">entries</p>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-wider">entries</p>
                     </div>
                   </Link>
                 );
@@ -346,33 +300,27 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-xl font-bold text-white">Recent Entries</h2>
-              <p className="text-sm text-gray-500 mt-1">{state.entries.length} total entries</p>
+              <p className="text-sm text-slate-400 mt-1">{state.entries.length} total entries</p>
             </div>
             <Link 
               href="/journal" 
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 text-sm text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+              className="btn-secondary text-sm py-2 px-4"
             >
               View All
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
             </Link>
           </div>
           
           {recentEntries.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 flex items-center justify-center mx-auto mb-4">
-                <span className="text-4xl">📝</span>
+            <div className="text-center py-10">
+              <div className="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">📝</span>
               </div>
-              <p className="text-gray-400 mb-1">No entries yet</p>
-              <p className="text-gray-600 text-sm mb-6">Start documenting your journey</p>
+              <p className="text-slate-400 mb-1">No entries yet</p>
+              <p className="text-slate-500 text-sm mb-4">Start documenting your journey</p>
               <Link
                 href="/journal/new"
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border border-purple-500/20 text-purple-400 rounded-xl hover:bg-purple-500/20 transition-all"
+                className="btn-primary text-sm"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
                 Write Entry
               </Link>
             </div>
@@ -384,20 +332,20 @@ export default function Dashboard() {
                   <Link
                     key={entry.id}
                     href={`/journal/${entry.id}`}
-                    className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-transparent hover:border-white/[0.05] transition-all group"
+                    className="flex items-center gap-4 p-4 rounded-xl bg-[#1a1a25] hover:bg-[#1f1f2e] border border-white/5 hover:border-white/10 transition-all group"
                   >
-                    <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                    <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center text-2xl">
                       {mood?.emoji}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white font-semibold truncate group-hover:text-purple-400 transition-colors">{entry.title}</p>
-                      <p className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                      <p className="text-sm text-white font-medium truncate group-hover:text-cyan-400 transition-colors">{entry.title}</p>
+                      <p className="text-xs text-slate-500 mt-1 flex items-center gap-2">
                         <span>{new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                        <span className="w-1 h-1 rounded-full bg-gray-600" />
+                        <span className="w-1 h-1 rounded-full bg-slate-600" />
                         <span className="capitalize">{entry.type}</span>
                       </p>
                     </div>
-                    <svg className="w-5 h-5 text-gray-600 group-hover:text-purple-400 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-slate-600 group-hover:text-cyan-400 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
                     </svg>
                   </Link>
@@ -409,26 +357,23 @@ export default function Dashboard() {
       </div>
 
       {/* CTA Section */}
-      <div className="card-glow p-10 text-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-cyan-500/5 to-pink-500/5" />
-        <div className="relative z-10">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-purple-500/30">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </div>
-          <h3 className="text-2xl font-bold text-white mb-2">Ready to make progress?</h3>
-          <p className="text-gray-400 mb-8 max-w-md mx-auto">Every entry brings you closer to your goals. Document your journey and watch yourself transform.</p>
-          <Link
-            href="/journal/new"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-purple-500 to-cyan-500 text-white rounded-2xl font-semibold hover:shadow-xl hover:shadow-purple-500/30 transition-all duration-300 hover:-translate-y-1"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Write Today&apos;s Entry
-          </Link>
+      <div className="card p-8 text-center bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-cyan-500/20">
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center mx-auto mb-4">
+          <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
         </div>
+        <h3 className="text-2xl font-bold text-white mb-2">Ready to make progress?</h3>
+        <p className="text-slate-400 mb-6 max-w-md mx-auto">Every entry brings you closer to your goals. Document your journey and watch yourself transform.</p>
+        <Link
+          href="/journal/new"
+          className="btn-primary inline-flex items-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Write Today&apos;s Entry
+        </Link>
       </div>
     </div>
   );

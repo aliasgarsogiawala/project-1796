@@ -245,8 +245,8 @@ export default function TimelinePage() {
         <div className="card p-6">
           <h2 className="text-xl font-bold text-white mb-6">Monthly Activity</h2>
           <div className="space-y-4">
-            {stats.months.map((month, index) => (
-              <div key={month.label} className="group">
+{stats.months.map((month, index) => (
+              <div key={`${month.label}-${index}`} className="group">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-gray-400">{month.label}</span>
                   <span className="text-sm font-semibold text-white">{month.count} entries</span>
